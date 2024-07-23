@@ -1,8 +1,8 @@
 package domain
 
 type Song struct {
-	Name  string
-	Style string
+	Name  string `json:"name"`
+	Style string `json:"style"`
 }
 
 type UserMusicPreferencesDTO struct {

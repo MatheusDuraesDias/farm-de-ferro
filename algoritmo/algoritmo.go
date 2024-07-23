@@ -86,7 +86,7 @@ func filterOfSongs(songs []domain.Song, userPreferences []string, likes []string
 				alreadyAdded = true
 			}
 		}
-		if alreadyAdded == false {
+		if !alreadyAdded {
 			filteredSongs = append(filteredSongs, notAddedSongs[randId])
 			addedIds = append(addedIds, randId)
 		}
@@ -94,77 +94,3 @@ func filterOfSongs(songs []domain.Song, userPreferences []string, likes []string
 
 	return filteredSongs
 }
-
-// func filterOfSongs(songs []Song, userPreferences []string, likes []string, follows []string) []Song {
-
-// 	var filteredNewSongs []Song
-// 	var filteredLikeSongs []Song
-// 	var filteredFollowSongs []Song
-// 	var filteredAllSongs []Song
-
-// 	added := false
-// 	var notAddedSongs []Song
-
-// 	for _, song := range songs {
-// 		for _, follow := range follows {
-// 			if follow == song.Style {
-// 				filteredFollowSongs = append(filteredFollowSongs, song)
-// 				added = true
-// 			}
-// 		}
-// 		if !added {
-// 			notAddedSongs = append(notAddedSongs, song)
-// 			added = false
-// 		}
-// 	}
-
-// 	rand.Shuffle(len(filteredFollowSongs), func(i, j int) {
-// 		filteredFollowSongs[i], filteredFollowSongs[j] = filteredFollowSongs[j], filteredFollowSongs[i]
-// 	})
-
-// 	songs = notAddedSongs
-
-// 	for _, song := range songs {
-// 		for _, like := range likes {
-// 			if like == song.Style {
-// 				filteredLikeSongs = append(filteredLikeSongs, song)
-// 				added = true
-// 			}
-// 		}
-// 		if !added {
-// 			notAddedSongs = append(notAddedSongs, song)
-// 			added = false
-// 		}
-// 	}
-
-// 	songs = notAddedSongs
-
-// 	rand.Shuffle(len(filteredLikeSongs), func(i, j int) {
-// 		filteredLikeSongs[i], filteredLikeSongs[j] = filteredLikeSongs[j], filteredLikeSongs[i]
-// 	})
-
-// 	for _, song := range songs {
-// 		for _, preference := range userPreferences {
-// 			if preference == song.Style {
-// 				filteredNewSongs = append(filteredNewSongs, song)
-// 				added = true
-// 			}
-// 		}
-// 		if !added {
-// 			notAddedSongs = append(notAddedSongs, song)
-// 			added = false
-// 		}
-// 	}
-
-// 	rand.Shuffle(len(filteredNewSongs), func(i, j int) {
-// 		filteredNewSongs[i], filteredNewSongs[j] = filteredNewSongs[j], filteredNewSongs[i]
-// 	})
-
-// 	filteredAllSongs = append(filteredAllSongs, filteredFollowSongs...)
-// 	filteredAllSongs = append(filteredAllSongs, filteredLikeSongs...)
-// 	filteredAllSongs = append(filteredAllSongs, filteredNewSongs...)
-
-// 	if len(filteredAllSongs) <
-
-// 	return filteredAllSongs
-// }

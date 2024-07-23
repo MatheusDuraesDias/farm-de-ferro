@@ -3,13 +3,14 @@ package main
 import (
 	"algorithm/mod/algoritmo"
 	"algorithm/mod/algoritmo/domain"
-	// "encoding/json"
-	"fmt"
-	// "github.com/labstack/echo"
+	"net/http"
+
+	"github.com/labstack/echo/v4"
 )
 
-func main() {
-
+// Handler
+func getTestRecommendedSongs(c echo.Context) error {
+	// Mock data for testing
 	mockData := domain.UserMusicPreferencesDTO{
 		UserPreferences: []string{
 			"Rock", "Pop", "Jazz", "Hip-Hop", "Classical", "Electronic", "Reggae", "Country", "Blues", "Metal",
@@ -69,22 +70,34 @@ func main() {
 		},
 	}
 
-	// e := echo.New()
+	algo := algoritmo.Algo{
+		Idk: "doesn't matter",
+	}
+
+	recommendedSongs := algo.Algoritmo(mockData)
+	return c.JSON(http.StatusOK, recommendedSongs)
+}
+
+func getRecommendedSongs(c echo.Context) error {
+	params := new(domain.UserMusicPreferencesDTO)
+	if err := c.Bind(params); err != nil {
+		return err
+	}
 
 	algo := algoritmo.Algo{
 		Idk: "doesn't matter",
 	}
 
-	fmt.Println(algo.Algoritmo(mockData))
+	recommendedSongs := algo.Algoritmo(*params)
+	return c.JSON(http.StatusOK, recommendedSongs)
+}
 
-	// e.GET("/mrbeast", func(c echo.Context) error {
-	// 	res, err := json.Marshal(algo.Algoritmo(mockData))
-	// 	fmt.Println(res)
-	// 	if err != nil {
-	// 		return c.JSON(500, err)
-	// 	}
-	// 	return c.JSON(200, res)
-	// })
 
-	// e.Logger.Fatal(e.Start(":8080"))
+func main() {
+	e := echo.New()
+
+	e.GET("/test-recommended-songs", getTestRecommendedSongs)
+	e.GET("/recommended-songs", getRecommendedSongs)
+
+	e.Logger.Fatal(e.Start(":8080"))
 }
