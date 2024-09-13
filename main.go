@@ -2,16 +2,22 @@ package main
 
 import (
 	"algorithm/mod/algoritmo"
+	"algorithm/mod/algoritmo/database"
 	"algorithm/mod/algoritmo/domain"
+	"context"
+	"fmt"
 	"net/http"
+	"os"
+	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Handler
 func getTestRecommendedSongs(c echo.Context) error {
-	// Mock data for testing
-	mockData := domain.UserMusicPreferencesDTO{
+	mockData := domain.UserMusicPreferences{
 		UserPreferences: []string{
 			"Rock", "Pop", "Jazz", "Hip-Hop", "Classical", "Electronic", "Reggae", "Country", "Blues", "Metal",
 		},
@@ -70,34 +76,41 @@ func getTestRecommendedSongs(c echo.Context) error {
 		},
 	}
 
-	algo := algoritmo.Algo{
-		Idk: "doesn't matter",
-	}
+	algo := algoritmo.Algo{}
 
 	recommendedSongs := algo.Algoritmo(mockData)
 	return c.JSON(http.StatusOK, recommendedSongs)
 }
 
 func getRecommendedSongs(c echo.Context) error {
-	params := new(domain.UserMusicPreferencesDTO)
+	params := new(domain.UserMusicPreferences)
 	if err := c.Bind(params); err != nil {
 		return err
 	}
 
-	algo := algoritmo.Algo{
-		Idk: "doesn't matter",
-	}
+	algo := algoritmo.Algo{}
 
 	recommendedSongs := algo.Algoritmo(*params)
 	return c.JSON(http.StatusOK, recommendedSongs)
 }
 
-
 func main() {
 	e := echo.New()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Printf(err.Error())
+	}
 
 	e.GET("/test-recommended-songs", getTestRecommendedSongs)
 	e.GET("/recommended-songs", getRecommendedSongs)
+	uri := os.Getenv("URI")
+	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 
-	e.Logger.Fatal(e.Start(":8080"))
+	db := database.NewDatabase(client, cancel)
+	db.Ping(ctx)
+	db.GetFavoriteStyles(ctx, "66c868e082cd6161c37c0f48")
+	db.UserFollowStyles(ctx, "66c868e082cd6161c37c0f48")
+
+	// e.Logger.Fatal(e.Start(":8080"))
 }

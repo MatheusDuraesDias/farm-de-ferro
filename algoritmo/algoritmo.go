@@ -6,10 +6,9 @@ import (
 )
 
 type Algo struct {
-	Idk string
 }
 
-func (a *Algo) Algoritmo(params domain.UserMusicPreferencesDTO) []domain.Song {
+func (a *Algo) Algoritmo(params domain.UserMusicPreferences) []domain.Song {
 
 	filteredNewSongs := filterOfSongs(params.Random50NewSongs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 10)
 	filteredRandomSongs := filterOfSongs(params.Random50Songs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 10)
@@ -26,71 +25,137 @@ func (a *Algo) Algoritmo(params domain.UserMusicPreferencesDTO) []domain.Song {
 	return allSongs[:25]
 }
 
+// vou comentar por que achei mei bagunça o algo-ritmo
 func filterOfSongs(songs []domain.Song, userPreferences []string, likes []string, follows []string, minimumFiltered int) []domain.Song {
-
 	var filteredSongs []domain.Song
+	notAddedSongs := make([]domain.Song, 0)
 
-	added := false
-	var notAddedSongs []domain.Song
+	// maps para otimizar a pesquisa(sem ter que fazer um monte de for²)
+	followSet := make(map[string]struct{})
+	for _, follow := range follows {
+		followSet[follow] = struct{}{}
+	}
 
+	likeSet := make(map[string]struct{})
+	for _, like := range likes {
+		likeSet[like] = struct{}{}
+	}
+
+	preferenceSet := make(map[string]struct{})
+	for _, preference := range userPreferences {
+		preferenceSet[preference] = struct{}{}
+	}
+
+	// filtro por estilos seguidos pelo usuário
 	for _, song := range songs {
-		for _, follow := range follows {
-			if follow == song.Style {
-				filteredSongs = append(filteredSongs, song)
-				added = true
-			}
-		}
-		if !added {
+		if _, exists := followSet[song.Style]; exists {
+			filteredSongs = append(filteredSongs, song)
+		} else {
 			notAddedSongs = append(notAddedSongs, song)
 		}
 	}
 
+	// Reset
 	songs = notAddedSongs
-	added = false
+	notAddedSongs = make([]domain.Song, 0)
+
+	// filtro por likes do usuário
 	for _, song := range songs {
-		for _, like := range likes {
-			if like == song.Style {
-				filteredSongs = append(filteredSongs, song)
-				added = true
-			}
-		}
-		if !added {
+		if _, exists := likeSet[song.Style]; exists {
+			filteredSongs = append(filteredSongs, song)
+		} else {
 			notAddedSongs = append(notAddedSongs, song)
 		}
 	}
 
+	// Reset
 	songs = notAddedSongs
-	added = false
+	notAddedSongs = make([]domain.Song, 0)
+
+	// filtro por preferências do usuário
 	for _, song := range songs {
-		for _, preference := range userPreferences {
-			if preference == song.Style {
-				filteredSongs = append(filteredSongs, song)
-				added = true
-			}
-		}
-		if !added {
+		if _, exists := preferenceSet[song.Style]; exists {
+			filteredSongs = append(filteredSongs, song)
+		} else {
 			notAddedSongs = append(notAddedSongs, song)
 		}
 	}
 
-	// rand.Shuffle(len(filteredSongs), func(i, j int) {
-	// 	filteredSongs[i], filteredSongs[j] = filteredSongs[j], filteredSongs[i]
-	// })
-
-	var addedIds []int
+	// verificação de mínimo de músicas filtradas
+	addedIds := make(map[int]struct{})
 	for len(filteredSongs) < minimumFiltered {
-		alreadyAdded := false
 		randId := rand.Intn(len(notAddedSongs))
-		for _, yeah := range addedIds {
-			if yeah == randId {
-				alreadyAdded = true
-			}
-		}
-		if !alreadyAdded {
+		if _, alreadyAdded := addedIds[randId]; !alreadyAdded {
 			filteredSongs = append(filteredSongs, notAddedSongs[randId])
-			addedIds = append(addedIds, randId)
+			addedIds[randId] = struct{}{}
 		}
 	}
 
 	return filteredSongs
 }
+
+// func filterOfSongs2(songs []domain.Song, userPreferences []string, likes []string, follows []string, minimumFiltered int) []domain.Song {
+
+// 	var filteredSongs []domain.Song
+
+// 	added := false
+// 	var notAddedSongs []domain.Song
+
+// 	for _, song := range songs {
+// 		for _, follow := range follows {
+// 			if follow == song.Style {
+// 				filteredSongs = append(filteredSongs, song)
+// 				added = true
+// 			}
+// 		}
+// 		if !added {
+// 			notAddedSongs = append(notAddedSongs, song)
+// 		}
+// 	}
+
+// 	songs = notAddedSongs
+// 	added = false
+// 	for _, song := range songs {
+// 		for _, like := range likes {
+// 			if like == song.Style {
+// 				filteredSongs = append(filteredSongs, song)
+// 				added = true
+// 			}
+// 		}
+// 		if !added {
+// 			notAddedSongs = append(notAddedSongs, song)
+// 		}
+// 	}
+
+// 	songs = notAddedSongs
+// 	added = false
+// 	for _, song := range songs {
+// 		for _, preference := range userPreferences {
+// 			if preference == song.Style {
+// 				filteredSongs = append(filteredSongs, song)
+// 				added = true
+// 			}
+// 		}
+// 		if !added {
+// 			notAddedSongs = append(notAddedSongs, song)
+// 		}
+// 	}
+
+// 	// esse aqui vai verificar se tem músicas filtradas suficientes
+// 	var addedIds []int
+// 	for len(filteredSongs) < minimumFiltered {
+// 		alreadyAdded := false
+// 		randId := rand.Intn(len(notAddedSongs))
+// 		for _, yeah := range addedIds {
+// 			if yeah == randId {
+// 				alreadyAdded = true
+// 			}
+// 		}
+// 		if !alreadyAdded {
+// 			filteredSongs = append(filteredSongs, notAddedSongs[randId])
+// 			addedIds = append(addedIds, randId)
+// 		}
+// 	}
+
+// 	return filteredSongs
+// }
