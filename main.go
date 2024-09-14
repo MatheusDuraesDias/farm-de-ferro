@@ -109,9 +109,7 @@ func main() {
 
 	db := database.NewDatabase(client, cancel)
 	db.Ping(ctx)
-	db.GetFavoriteStyles(ctx, "66c868e082cd6161c37c0f48")
-	db.GetFollowStyles(ctx, "66c868e082cd6161c37c0f48")
-	db.GetLastLikedStyles(ctx, "66c868e082cd6161c37c0f48")
+	db.GetAllUserStyles(ctx, "66c868e082cd6161c37c0f48")
 
 	// e.Logger.Fatal(e.Start(":8080"))
 }

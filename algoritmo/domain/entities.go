@@ -27,7 +27,7 @@ type UserMusicPreferences struct {
 	// tipo o de cima, só que limitando a músicas que tenham lançado no máximo há 50 dias
 	Random20IndieSongs []Song `json:"random_20_indie_songs"`
 	//mongo logic:
-	// Tipo o Random50Songs, só que se limita a músicas com o 
+	// Tipo o Random50Songs, só que se limita a músicas com o
 }
 
 type PostDTO struct {

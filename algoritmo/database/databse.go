@@ -46,37 +46,81 @@ func (db *Database) Ping(ctx context.Context) error {
 	return nil
 }
 
-func (db *Database) GetFavoriteStyles(ctx context.Context, userId string) []string {
-	fmt.Println(userId)
+func (db *Database) GetAllUserStyles(ctx context.Context, userId string) map[string][]string {
 	id, err := primitive.ObjectIDFromHex(userId)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	filter := bson.M{"_id": id}
-	projection := bson.M{"favorites": 1, "_id": 0}
+	projection := bson.M{"favorites": 1, "followings": 1, "likes": 1, "_id": 0}
 	findOneOptions := options.FindOne().SetProjection(projection)
 
-	var favoriteIds bson.M
-	if err := db.UserCol.FindOne(ctx, filter, findOneOptions).Decode(&favoriteIds); err != nil {
+	var userData bson.M
+	if err := db.UserCol.FindOne(ctx, filter, findOneOptions).Decode(&userData); err != nil {
 		log.Fatal(err)
 	}
 
-	var idsParam []primitive.ObjectID
-	if arr, ok := favoriteIds["favorites"].(primitive.A); ok {
-		for _, item := range arr {
+	var favorites, followings, likes []primitive.ObjectID
+
+	if favArr, ok := userData["favorites"].(primitive.A); ok {
+		for _, item := range favArr {
 			if str, ok := item.(string); ok {
 				id, err := primitive.ObjectIDFromHex(str)
 				if err != nil {
 					log.Fatal(err)
 				}
-				idsParam = append(idsParam, id)
+				favorites = append(favorites, id)
 			}
 		}
 	}
 
+	if followArr, ok := userData["followings"].(primitive.A); ok {
+		for _, item := range followArr {
+			if str, ok := item.(string); ok {
+				id, err := primitive.ObjectIDFromHex(str)
+				if err != nil {
+					log.Fatal(err)
+				}
+				followings = append(followings, id)
+			}
+		}
+	}
+
+	if likesArr, ok := userData["likes"].(primitive.A); ok {
+		for _, item := range likesArr {
+			if str, ok := item.(string); ok {
+				id, err := primitive.ObjectIDFromHex(str)
+				if err != nil {
+					log.Fatal(err)
+				}
+				likes = append(likes, id)
+			}
+		}
+	}
+
+	favoriteStyles := db.GetStylesByPostIds(ctx, favorites)
+	followStyles := db.GetStylesByUserIds(ctx, followings)
+	lastLikedStyles := db.GetStylesByPostIds(ctx, likes)
+
+	result := map[string][]string{
+		"favoriteStyles":  favoriteStyles,
+		"followStyles":    followStyles,
+		"lastLikedStyles": lastLikedStyles,
+	}
+
+	fmt.Println(favoriteStyles)
+	fmt.Println(followStyles)
+	fmt.Println(lastLikedStyles)
+	return result
+}
+func (db *Database) GetStylesByPostIds(ctx context.Context, postIds []primitive.ObjectID) []string {
+	if len(postIds) == 0 {
+		return nil
+	}
+
 	matchStage := bson.D{
-		{"$match", bson.M{"_id": bson.M{"$in": idsParam}}},
+		{"$match", bson.M{"_id": bson.M{"$in": postIds}}},
 	}
 	groupStage := bson.D{
 		{"$group", bson.D{
@@ -87,6 +131,7 @@ func (db *Database) GetFavoriteStyles(ctx context.Context, userId string) []stri
 		{"$project", bson.M{"style": "$_id", "_id": 0}},
 	}
 	pipeline := mongo.Pipeline{matchStage, groupStage, projectStage}
+
 	cursor, err := db.PostCol.Aggregate(ctx, pipeline)
 	if err != nil {
 		log.Fatal(err)
@@ -98,51 +143,29 @@ func (db *Database) GetFavoriteStyles(ctx context.Context, userId string) []stri
 		log.Fatal(err)
 	}
 
-	var res []string
+	var styles []string
 	for _, doc := range result {
 		if style, ok := doc["style"].(string); ok {
-			res = append(res, style)
+			styles = append(styles, style)
 		}
 	}
 
-	return res
+	return removeDuplicates(styles)
 }
 
-func (db *Database) GetFollowStyles(ctx context.Context, userId string) []string {
-	id, err := primitive.ObjectIDFromHex(userId)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	filter := bson.M{"_id": id}
-	projection := bson.M{"followings": 1, "_id": 0}
-	findOneOptions := options.FindOne().SetProjection(projection)
-
-	var followings bson.M
-	if err := db.UserCol.FindOne(ctx, filter, findOneOptions).Decode(&followings); err != nil {
-		log.Fatal(err)
-	}
-
-	var idsParam []primitive.ObjectID
-	if arr, ok := followings["followings"].(primitive.A); ok {
-		for _, item := range arr {
-			if str, ok := item.(string); ok {
-				id, err := primitive.ObjectIDFromHex(str)
-				if err != nil {
-					log.Fatal(err)
-				}
-				idsParam = append(idsParam, id)
-			}
-		}
+func (db *Database) GetStylesByUserIds(ctx context.Context, userIds []primitive.ObjectID) []string {
+	if len(userIds) == 0 {
+		return nil
 	}
 
 	matchStage := bson.D{
-		{"$match", bson.M{"_id": bson.M{"$in": idsParam}}},
+		{"$match", bson.M{"_id": bson.M{"$in": userIds}}},
 	}
 	projectStage := bson.D{
 		{"$project", bson.M{"stylesPosted": 1, "_id": 0}},
 	}
 	pipeline := mongo.Pipeline{matchStage, projectStage}
+
 	cursor, err := db.UserCol.Aggregate(ctx, pipeline)
 	if err != nil {
 		log.Fatal(err)
@@ -154,17 +177,16 @@ func (db *Database) GetFollowStyles(ctx context.Context, userId string) []string
 		log.Fatal(err)
 	}
 
-	var res []string
+	var styles []string
 	for _, doc := range result {
 		if stylesPosted, ok := doc["stylesPosted"].(bson.M); ok {
 			for style := range stylesPosted {
-				res = append(res, style)
+				styles = append(styles, style)
 			}
 		}
 	}
 
-	res = removeDuplicates(res)
-	return res
+	return removeDuplicates(styles)
 }
 
 func removeDuplicates(elements []string) []string {
@@ -178,66 +200,4 @@ func removeDuplicates(elements []string) []string {
 		}
 	}
 	return result
-}
-
-func (db *Database) GetLastLikedStyles(ctx context.Context, userId string) []string {
-	id, err := primitive.ObjectIDFromHex(userId)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	filter := bson.M{"_id": id}
-	projection := bson.M{"likes": 1, "_id": 0}
-	findOneOptions := options.FindOne().SetProjection(projection)
-
-	var likes bson.M
-	if err := db.UserCol.FindOne(ctx, filter, findOneOptions).Decode(&likes); err != nil {
-		log.Fatal(err)
-	}
-
-	var idsParam []primitive.ObjectID
-	if arr, ok := likes["likes"].(primitive.A); ok {
-		for _, item := range arr {
-			if str, ok := item.(string); ok {
-				id, err := primitive.ObjectIDFromHex(str)
-				if err != nil {
-					log.Fatal(err)
-				}
-				idsParam = append(idsParam, id)
-			}
-		}
-	}
-
-	matchStage := bson.D{
-		{"$match", bson.M{"_id": bson.M{"$in": idsParam}}},
-	}
-	groupStage := bson.D{
-		{"$group", bson.D{
-			{"_id", "$style"},
-		}},
-	}
-	projectStage := bson.D{
-		{"$project", bson.M{"style": "$_id", "_id": 0}},
-	}
-	pipeline := mongo.Pipeline{matchStage, groupStage, projectStage}
-	cursor, err := db.PostCol.Aggregate(ctx, pipeline)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cursor.Close(ctx)
-
-	var result []bson.M
-	if err := cursor.All(ctx, &result); err != nil {
-		log.Fatal(err)
-	}
-
-	var res []string
-	for _, doc := range result {
-		if style, ok := doc["style"].(string); ok {
-			res = append(res, style)
-		}
-	}
-
-	fmt.Println(res)
-	return res
 }
