@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
+
+	"algorithm/mod/algoritmo/domain"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -109,9 +112,6 @@ func (db *Database) GetAllUserStyles(ctx context.Context, userId string) map[str
 		"lastLikedStyles": lastLikedStyles,
 	}
 
-	fmt.Println(favoriteStyles)
-	fmt.Println(followStyles)
-	fmt.Println(lastLikedStyles)
 	return result
 }
 func (db *Database) GetStylesByPostIds(ctx context.Context, postIds []primitive.ObjectID) []string {
@@ -200,4 +200,88 @@ func removeDuplicates(elements []string) []string {
 		}
 	}
 	return result
+}
+
+func (db *Database) Random50Songs(ctx context.Context) ([]domain.Song, error) {
+	pipeline := mongo.Pipeline{
+		{{"$sample", bson.D{{"size", 50}}}},
+	}
+
+	cursor, err := db.PostCol.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var songs []domain.PostDTO
+	if err := cursor.All(ctx, &songs); err != nil {
+		return nil, err
+	}
+
+	var songsRes []domain.Song
+	songsRes = []domain.Song{}
+
+	for i := 0; i< len(songs); i ++{
+		songsRes = append(songsRes, domain.PostDTOToSong(songs[i]))
+	}
+
+	return songsRes, nil
+}
+
+func (db *Database) Random50NewSongs(ctx context.Context) ([]domain.Song, error) {
+	now := time.Now()
+	dateLimit := now.AddDate(0, 0, -50)
+
+	pipeline := mongo.Pipeline{
+		{{"$match", bson.D{{"date", bson.D{{"$gte", dateLimit}}}}}},
+		{{"$sample", bson.D{{"size", 50}}}},
+	}
+
+	cursor, err := db.PostCol.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var songs []domain.PostDTO
+	if err := cursor.All(ctx, &songs); err != nil {
+		return nil, err
+	}
+
+	
+	var songsRes []domain.Song
+	songsRes = []domain.Song{}
+
+	for i := 0; i< len(songs); i ++{
+		songsRes = append(songsRes, domain.PostDTOToSong(songs[i]))
+	}
+
+	return songsRes, nil
+}
+
+func (db *Database) Random20IndieSongs(ctx context.Context) ([]domain.Song, error) {
+	pipeline := mongo.Pipeline{
+		{{"$match", bson.D{{"style", "indie"}}}},
+		{{"$sample", bson.D{{"size", 20}}}},
+	}
+
+	cursor, err := db.PostCol.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var songs []domain.PostDTO
+	if err := cursor.All(ctx, &songs); err != nil {
+		return nil, err
+	}
+
+	var songsRes []domain.Song
+	songsRes = []domain.Song{}
+
+	for i := 0; i< len(songs); i ++{
+		songsRes = append(songsRes, domain.PostDTOToSong(songs[i]))
+	}
+
+	return songsRes, nil
 }

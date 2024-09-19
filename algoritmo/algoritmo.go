@@ -1,22 +1,39 @@
 package algoritmo
 
 import (
+	"algorithm/mod/algoritmo/database"
 	"algorithm/mod/algoritmo/domain"
+	"context"
 	"math/rand"
 )
 
 type Algo struct {
+	db database.Database
+	ctx context.Context
 }
 
-func (a *Algo) Algoritmo(params domain.UserMusicPreferences) []domain.Song {
+func (a *Algo) Algoritmo(UserId string) []domain.Song {
+	userSets := a.db.GetAllUserStyles(a.ctx, UserId)
+	Random50Songs, _ := a.db.Random50Songs(a.ctx)
+	Random50NewSongs, _ := a.db.Random50NewSongs(a.ctx)
+	RandomIndieSongs, _ := a.db.Random20IndieSongs(a.ctx)
+
+	params := domain.UserMusicPreferences{
+		UserPreferences: userSets["favoriteStyles"],
+		UserFollowStyles: userSets["followStyles"],
+		UserLastLikes: userSets["lastLikedStyles"],
+		Random50Songs: Random50Songs,
+		Random50NewSongs: Random50NewSongs,
+		Random20IndieSongs: RandomIndieSongs,
+	}
 
 	filteredNewSongs := filterOfSongs(params.Random50NewSongs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 10)
 	filteredRandomSongs := filterOfSongs(params.Random50Songs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 10)
-	filteredIndieSongs := filterOfSongs(params.Random20IndieSongs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 5)
+	// filteredIndieSongs := filterOfSongs(params.Random20IndieSongs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 5)
 
 	allSongs := filteredNewSongs
 	allSongs = append(allSongs, filteredRandomSongs...)
-	allSongs = append(allSongs, filteredIndieSongs...)
+	allSongs = append(allSongs, params.Random20IndieSongs...)
 
 	rand.Shuffle(len(allSongs), func(i, j int) {
 		allSongs[i], allSongs[j] = allSongs[j], allSongs[i]
