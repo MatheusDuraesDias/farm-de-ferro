@@ -1,18 +1,17 @@
 package main
 
 import (
-	// "algorithm/mod/algoritmo"
+	"algorithm/mod/algoritmo"
 	"algorithm/mod/algoritmo/database"
-	// "algorithm/mod/algoritmo/domain"
 	"context"
 	"fmt"
-	// "go/printer"
-	// "net/http"
+	"go/printer"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/joho/godotenv"
-	// "github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -83,28 +82,24 @@ import (
 // 	return c.JSON(http.StatusOK, recommendedSongs)
 // }
 
-// func getRecommendedSongs(c echo.Context) error {
-// 	params := new(domain.UserMusicPreferences)
-// 	if err := c.Bind(params); err != nil {
-// 		return err
-// 	}
+func getRecommendedSongs(c echo.Context) error {
+	id := c.Param("id")
 
-// 	algo := algoritmo.Algo{}
+	algo := algoritmo.Algo{}
 
-// 	recommendedSongs := algo.Algoritmo(*params)
-// 	return c.JSON(http.StatusOK, recommendedSongs)
-// }
+	recommendedSongs := algo.Algoritmo(id)
+	return c.JSON(http.StatusOK, recommendedSongs)
+}
 
 func main() {
-	// e := echo.New()
+	e := echo.New()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Printf(err.Error())
 	}
 
-	// e.GET("/test-recommended-songs", fmt.Println("fodase"))
-	// e.GET("/recommended-songs/id", )
+	e.GET("/recommended-songs/:id", getRecommendedSongs)
 	uri := os.Getenv("URI")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
 
@@ -113,5 +108,5 @@ func main() {
 	db.GetAllUserStyles(ctx, "66c868e082cd6161c37c0f48")
 	db.Random50Songs(ctx)
 
-	// e.Logger.Fatal(e.Start(":8080"))
+	e.Logger.Fatal(e.Start(":8080"))
 }

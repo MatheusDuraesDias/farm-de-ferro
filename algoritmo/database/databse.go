@@ -20,6 +20,7 @@ type Database struct {
 	Cancel  context.CancelFunc
 	UserCol *mongo.Collection
 	PostCol *mongo.Collection
+	ctx context.Context
 }
 
 func NewDatabase(client *mongo.Client, cancel context.CancelFunc) *Database {
