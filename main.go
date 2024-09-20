@@ -81,13 +81,18 @@ import (
 // 	return c.JSON(http.StatusOK, recommendedSongs)
 // }
 
-func getRecommendedSongs(c echo.Context) error {
-	id := c.Param("id")
+func getRecommendedSongs(db database.Database) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		id := c.Param("id")
 
-	algo := algoritmo.Algo{}
+		algo := algoritmo.Algo{
+			Db: db,
+			Ctx: c.Request().Context(),
+		}
 
-	recommendedSongs := algo.Algoritmo(id)
-	return c.JSON(http.StatusOK, recommendedSongs)
+		recommendedSongs := algo.Algoritmo(id)
+		return c.JSON(http.StatusOK, recommendedSongs)
+	}
 }
 
 func main() {
@@ -95,17 +100,20 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Printf(err.Error())
+		fmt.Print(err.Error())
 	}
 
-	e.GET("/recommended-songs/:id", getRecommendedSongs)
 	uri := os.Getenv("URI")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(uri))
+	if err != nil {
+		panic(err)
+	}
 
 	db := database.NewDatabase(client, cancel)
 	db.Ping(ctx)
 	db.GetAllUserStyles(ctx, "66c868e082cd6161c37c0f48")
 	db.Random50Songs(ctx)
 
+	e.GET("recommended-songs/:id", getRecommendedSongs(*db))
 	e.Logger.Fatal(e.Start(":8080"))
 }

@@ -20,7 +20,6 @@ type Database struct {
 	Cancel  context.CancelFunc
 	UserCol *mongo.Collection
 	PostCol *mongo.Collection
-	ctx context.Context
 }
 
 func NewDatabase(client *mongo.Client, cancel context.CancelFunc) *Database {
@@ -55,6 +54,9 @@ func (db *Database) GetAllUserStyles(ctx context.Context, userId string) map[str
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	fmt.Println(id)
+	fmt.Println(userId)
 
 	filter := bson.M{"_id": id}
 	projection := bson.M{"favorites": 1, "followings": 1, "likes": 1, "_id": 0}

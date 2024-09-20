@@ -8,28 +8,40 @@ import (
 )
 
 type Algo struct {
-	db database.Database
-	ctx context.Context
+	Db  database.Database
+	Ctx context.Context
 }
 
 func (a *Algo) Algoritmo(UserId string) []domain.Song {
-	userSets := a.db.GetAllUserStyles(a.ctx, UserId)
-	Random50Songs, _ := a.db.Random50Songs(a.ctx)
-	Random50NewSongs, _ := a.db.Random50NewSongs(a.ctx)
-	RandomIndieSongs, _ := a.db.Random20IndieSongs(a.ctx)
+	userSets := a.Db.GetAllUserStyles(a.Ctx, UserId)
+	Random50Songs, _ := a.Db.Random50Songs(a.Ctx)
+	Random50NewSongs, _ := a.Db.Random50NewSongs(a.Ctx)
+	RandomIndieSongs, _ := a.Db.Random20IndieSongs(a.Ctx)
 
 	params := domain.UserMusicPreferences{
-		UserPreferences: userSets["favoriteStyles"],
-		UserFollowStyles: userSets["followStyles"],
-		UserLastLikes: userSets["lastLikedStyles"],
-		Random50Songs: Random50Songs,
-		Random50NewSongs: Random50NewSongs,
+		UserPreferences:    userSets["favoriteStyles"],
+		UserFollowStyles:   userSets["followStyles"],
+		UserLastLikes:      userSets["lastLikedStyles"],
+		Random50Songs:      Random50Songs,
+		Random50NewSongs:   Random50NewSongs,
 		Random20IndieSongs: RandomIndieSongs,
 	}
 
-	filteredNewSongs := filterOfSongs(params.Random50NewSongs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 10)
-	filteredRandomSongs := filterOfSongs(params.Random50Songs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 10)
-	// filteredIndieSongs := filterOfSongs(params.Random20IndieSongs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 5)
+	var filteredNewSongs []domain.Song
+
+	var filteredRandomSongs []domain.Song
+
+	if len(params.Random50NewSongs) < 10 {
+		filteredNewSongs = params.Random50NewSongs
+	} else {
+		filteredNewSongs = filterOfSongs(params.Random50NewSongs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 10)
+	}
+
+	if len(params.Random50Songs)<10{
+		filteredRandomSongs = params.Random50Songs
+	}else{
+		filteredRandomSongs = filterOfSongs(params.Random50Songs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 10)
+	}
 
 	allSongs := filteredNewSongs
 	allSongs = append(allSongs, filteredRandomSongs...)
@@ -39,7 +51,11 @@ func (a *Algo) Algoritmo(UserId string) []domain.Song {
 		allSongs[i], allSongs[j] = allSongs[j], allSongs[i]
 	})
 
-	return allSongs[:25]
+	if len(allSongs) > 25{
+		return allSongs[:25]
+	}else{
+		return allSongs
+	}
 }
 
 // vou comentar por que achei mei bagunça o algo-ritmo
