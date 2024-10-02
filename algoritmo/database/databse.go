@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"time"
 
@@ -45,7 +44,6 @@ func (db *Database) Ping(ctx context.Context) error {
 	if err := db.Client.Ping(ctx, readpref.Primary()); err != nil {
 		return err
 	}
-	fmt.Println("connected successfully")
 	return nil
 }
 
@@ -54,9 +52,6 @@ func (db *Database) GetAllUserStyles(ctx context.Context, userId string) map[str
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	fmt.Println(id)
-	fmt.Println(userId)
 
 	filter := bson.M{"_id": id}
 	projection := bson.M{"favorites": 1, "followings": 1, "likes": 1, "_id": 0}
@@ -123,7 +118,7 @@ func (db *Database) GetStylesByPostIds(ctx context.Context, postIds []primitive.
 	}
 
 	matchStage := bson.D{
-		{"$match", bson.M{"_id": bson.M{"$in": postIds}}},
+		{"$match", bson.M{"_id": bson.M{"$in": postIds}, "active": true}},
 	}
 	groupStage := bson.D{
 		{"$group", bson.D{
@@ -162,7 +157,7 @@ func (db *Database) GetStylesByUserIds(ctx context.Context, userIds []primitive.
 	}
 
 	matchStage := bson.D{
-		{"$match", bson.M{"_id": bson.M{"$in": userIds}}},
+		{"$match", bson.M{"_id": bson.M{"$in": userIds}, "active": true}},
 	}
 	projectStage := bson.D{
 		{"$project", bson.M{"stylesPosted": 1, "_id": 0}},
@@ -207,6 +202,7 @@ func removeDuplicates(elements []string) []string {
 
 func (db *Database) Random50Songs(ctx context.Context) ([]domain.Song, error) {
 	pipeline := mongo.Pipeline{
+		{{"$match", bson.D{{"isActive", true}}}},
 		{{"$sample", bson.D{{"size", 50}}}},
 	}
 
@@ -224,7 +220,7 @@ func (db *Database) Random50Songs(ctx context.Context) ([]domain.Song, error) {
 	var songsRes []domain.Song
 	songsRes = []domain.Song{}
 
-	for i := 0; i< len(songs); i ++{
+	for i := 0; i < len(songs); i++ {
 		songsRes = append(songsRes, domain.PostDTOToSong(songs[i]))
 	}
 
@@ -236,7 +232,7 @@ func (db *Database) Random50NewSongs(ctx context.Context) ([]domain.Song, error)
 	dateLimit := now.AddDate(0, 0, -50)
 
 	pipeline := mongo.Pipeline{
-		{{"$match", bson.D{{"date", bson.D{{"$gte", dateLimit}}}}}},
+		{{"$match", bson.D{{"date", bson.D{{"$gte", dateLimit}}}, {"isActive", true}}}},
 		{{"$sample", bson.D{{"size", 50}}}},
 	}
 
@@ -251,11 +247,10 @@ func (db *Database) Random50NewSongs(ctx context.Context) ([]domain.Song, error)
 		return nil, err
 	}
 
-	
 	var songsRes []domain.Song
 	songsRes = []domain.Song{}
 
-	for i := 0; i< len(songs); i ++{
+	for i := 0; i < len(songs); i++ {
 		songsRes = append(songsRes, domain.PostDTOToSong(songs[i]))
 	}
 
@@ -264,7 +259,7 @@ func (db *Database) Random50NewSongs(ctx context.Context) ([]domain.Song, error)
 
 func (db *Database) Random20IndieSongs(ctx context.Context) ([]domain.Song, error) {
 	pipeline := mongo.Pipeline{
-		{{"$match", bson.D{{"style", "indie"}}}},
+		{{"$match", bson.D{{"style", "indie"}, {"isActive", true}}}},
 		{{"$sample", bson.D{{"size", 20}}}},
 	}
 
@@ -282,7 +277,7 @@ func (db *Database) Random20IndieSongs(ctx context.Context) ([]domain.Song, erro
 	var songsRes []domain.Song
 	songsRes = []domain.Song{}
 
-	for i := 0; i< len(songs); i ++{
+	for i := 0; i < len(songs); i++ {
 		songsRes = append(songsRes, domain.PostDTOToSong(songs[i]))
 	}
 

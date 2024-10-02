@@ -3,10 +3,8 @@ package domain
 import "go.mongodb.org/mongo-driver/bson/primitive"
 
 type Song struct {
-	// Name   string `json:"name"`
-	Id string `json:"id"`
-	Style  string `json:"style"`
-	// Artist string `json:"artist"`
+	Id    string `json:"id"`
+	Style string `json:"style"`
 }
 
 type UserMusicPreferences struct {
@@ -32,19 +30,15 @@ type UserMusicPreferences struct {
 }
 
 type PostDTO struct {
-	ID     primitive.ObjectID `bson:"_id"`
-	// Title  string             `bson:"title"`
-	// UserId string             `bson:"userId"`
-	Style  string             `bson:"style"`
+	ID    primitive.ObjectID `bson:"_id"`
+	Style string             `bson:"style"`
 }
 
 func PostDTOToSong(post PostDTO) Song {
-	objectIDString := post.ID.Hex()  
+	objectIDString := post.ID.Hex()
 	song := Song{
-		// Name:   post.Title,
-		Id: objectIDString,
-		Style:  post.Style,
-		// Artist: post.UserId,
+		Id:    objectIDString,
+		Style: post.Style,
 	}
 
 	return song
