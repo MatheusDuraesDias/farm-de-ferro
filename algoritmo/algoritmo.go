@@ -20,9 +20,9 @@ func (a *Algo) Algoritmo(UserId string, limit int, viewedPosts []string) ([]stri
 	}
 
 	userSets := a.Db.GetAllUserStyles(a.Ctx, UserId)
-	Random50Songs, _ := a.Db.Random50Songs(a.Ctx)
-	Random50NewSongs, _ := a.Db.Random50NewSongs(a.Ctx)
-	RandomIndieSongs, _ := a.Db.Random20IndieSongs(a.Ctx)
+	RandomSongs, _ := a.Db.RandomSongs(a.Ctx, limit)
+	RandomNewSongs, _ := a.Db.RandomNewSongs(a.Ctx, limit)
+	RandomIndieSongs, _ := a.Db.RandomIndieSongs(a.Ctx, limit)
 
 	params := domain.UserMusicPreferences{
 		UserPreferences:  userSets["favoriteStyles"],
@@ -30,39 +30,33 @@ func (a *Algo) Algoritmo(UserId string, limit int, viewedPosts []string) ([]stri
 		UserLastLikes:    userSets["lastLikedStyles"],
 	}
 
-	allSongs := append(Random50NewSongs, Random50Songs...)
+	allSongs := append(RandomNewSongs, RandomSongs...)
 
-	unviewed, err := a.Neo4JDb.GetUnviewedPosts(UserId, allSongs)
+	var filteredSongs []domain.Song
+
+	if len(filteredSongs) < int(float64(limit)*1.8) {
+		filteredSongs = allSongs
+	} else {
+		filteredSongs = filterOfSongs(allSongs, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, int(float64(limit)*1.8))
+	}
+
+	allSongs = append(filteredSongs, RandomIndieSongs...)
+	allSongs = removeDuplicates(allSongs)
+
+	allSongsIds, err := a.Neo4JDb.GetUnviewedPosts(UserId, allSongs)
 	if err != nil {
 		return nil, err
 	}
 
-	unviewedIndies, err := a.Neo4JDb.GetUnviewedPosts(UserId, RandomIndieSongs)
-
-	var filteredSongs []domain.Song
-
-	if len(filteredSongs) < 40 {
-		filteredSongs = unviewed
-	} else {
-		filteredSongs = filterOfSongs(unviewed, params.UserPreferences, params.UserLastLikes, params.UserFollowStyles, 40)
-	}
-
-	allSongs = append(filteredSongs, unviewedIndies...)
-	allSongs = removeDuplicates(allSongs)
-
-	rand.Shuffle(len(allSongs), func(i, j int) {
-		allSongs[i], allSongs[j] = allSongs[j], allSongs[i]
+	rand.Shuffle(len(allSongsIds), func(i, j int) {
+		allSongsIds[i], allSongsIds[j] = allSongsIds[j], allSongsIds[i]
 	})
 
 	res := []string{}
 	if len(allSongs) > limit {
-		for i := 0; i < limit; i++ {
-			res = append(res, allSongs[i].Id)
-		}
+		res = allSongsIds[:limit]
 	} else {
-		for song := range allSongs {
-			res = append(res, allSongs[song].Id)
-		}
+		res = allSongsIds
 	}
 
 	return res, nil
@@ -81,12 +75,10 @@ func removeDuplicates(elements []domain.Song) []domain.Song {
 	return result
 }
 
-// vou comentar por que achei mei bagunça o algo-ritmo
 func filterOfSongs(songs []domain.Song, userPreferences []string, likes []string, follows []string, minimumFiltered int) []domain.Song {
 	var filteredSongs []domain.Song
 	notAddedSongs := make([]domain.Song, 0)
 
-	// maps para otimizar a pesquisa(sem ter que fazer um monte de for²)
 	followSet := make(map[string]struct{})
 	for _, follow := range follows {
 		followSet[follow] = struct{}{}
@@ -102,7 +94,6 @@ func filterOfSongs(songs []domain.Song, userPreferences []string, likes []string
 		preferenceSet[preference] = struct{}{}
 	}
 
-	// filtro por estilos seguidos pelo usuário
 	for _, song := range songs {
 		if _, exists := followSet[song.Style]; exists {
 			filteredSongs = append(filteredSongs, song)
@@ -111,11 +102,9 @@ func filterOfSongs(songs []domain.Song, userPreferences []string, likes []string
 		}
 	}
 
-	// Reset
 	songs = notAddedSongs
 	notAddedSongs = make([]domain.Song, 0)
 
-	// filtro por likes do usuário
 	for _, song := range songs {
 		if _, exists := likeSet[song.Style]; exists {
 			filteredSongs = append(filteredSongs, song)
@@ -124,11 +113,9 @@ func filterOfSongs(songs []domain.Song, userPreferences []string, likes []string
 		}
 	}
 
-	// Reset
 	songs = notAddedSongs
 	notAddedSongs = make([]domain.Song, 0)
 
-	// filtro por preferências do usuário
 	for _, song := range songs {
 		if _, exists := preferenceSet[song.Style]; exists {
 			filteredSongs = append(filteredSongs, song)
@@ -137,7 +124,6 @@ func filterOfSongs(songs []domain.Song, userPreferences []string, likes []string
 		}
 	}
 
-	// verificação de mínimo de músicas filtradas
 	addedIds := make(map[int]struct{})
 	for len(filteredSongs) < minimumFiltered {
 		randId := rand.Intn(len(notAddedSongs))

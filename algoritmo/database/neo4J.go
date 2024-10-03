@@ -11,19 +11,27 @@ type NeoDatabase struct {
 	Driver neo4j.DriverWithContext
 }
 
-func (db *NeoDatabase) GetUnviewedPosts(userId string, posts []domain.Song) ([]domain.Song, error) {
+func (db *NeoDatabase) GetUnviewedPosts(userId string, posts []domain.Song) ([]string, error) {
 	session := db.Driver.NewSession(context.Background(), neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(context.Background())
+
+	postIds := []string{}
+	for _, post := range posts {
+		postIds = append(postIds, post.Id)
+	}
 
 	result, err := session.ExecuteRead(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
 		query := `
 			MATCH (u:User {id: $userId})
 			WITH u
-			MATCH (u)-[:VIEWED]->(p:Post)
-			RETURN p.id AS postId
+			UNWIND $postIds AS postId
+			OPTIONAL MATCH (u)-[:VIEWED]->(p:Post {id: postId})
+			WHERE p IS NULL
+			RETURN postId
 		`
 		records, err := tx.Run(context.Background(), query, map[string]interface{}{
-			"userId": userId,
+			"userId":  userId,
+			"postIds": postIds,
 		})
 		if err != nil {
 			return nil, err
@@ -34,31 +42,14 @@ func (db *NeoDatabase) GetUnviewedPosts(userId string, posts []domain.Song) ([]d
 			postId, _ := records.Record().Get("postId")
 			postIds = append(postIds, postId.(string))
 		}
+
 		return postIds, nil
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	res := filterSongs(posts, result.([]string))
-
-	return res, nil
-}
-
-func filterSongs(songs []domain.Song, allowedIds []string) []domain.Song {
-	allowedMap := make(map[string]struct{}, len(allowedIds))
-	for _, id := range allowedIds {
-		allowedMap[id] = struct{}{}
-	}
-
-	var filteredSongs []domain.Song
-	for _, song := range songs {
-		if _, exists := allowedMap[song.Id]; !exists {
-			filteredSongs = append(filteredSongs, song)
-		}
-	}
-
-	return filteredSongs
+	return result.([]string), nil
 }
 
 func (db *NeoDatabase) MarkSongsAsViewed(userId string, postIds []string) error {

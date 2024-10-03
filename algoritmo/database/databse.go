@@ -200,7 +200,10 @@ func removeDuplicates(elements []string) []string {
 	return result
 }
 
-func (db *Database) Random50Songs(ctx context.Context) ([]domain.Song, error) {
+func (db *Database) RandomSongs(ctx context.Context, limit int) ([]domain.Song, error) {
+
+	limit = int(float64(limit) * 1.5)
+
 	pipeline := mongo.Pipeline{
 		{{"$match", bson.D{{"isActive", true}}}},
 		{{"$sample", bson.D{{"size", 50}}}},
@@ -227,13 +230,15 @@ func (db *Database) Random50Songs(ctx context.Context) ([]domain.Song, error) {
 	return songsRes, nil
 }
 
-func (db *Database) Random50NewSongs(ctx context.Context) ([]domain.Song, error) {
+func (db *Database) RandomNewSongs(ctx context.Context, limit int) ([]domain.Song, error) {
 	now := time.Now()
 	dateLimit := now.AddDate(0, 0, -50)
 
+	limit = int(float64(limit) * 1.5)
+
 	pipeline := mongo.Pipeline{
 		{{"$match", bson.D{{"date", bson.D{{"$gte", dateLimit}}}, {"isActive", true}}}},
-		{{"$sample", bson.D{{"size", 50}}}},
+		{{"$sample", bson.D{{"size", limit}}}},
 	}
 
 	cursor, err := db.PostCol.Aggregate(ctx, pipeline)
@@ -257,10 +262,12 @@ func (db *Database) Random50NewSongs(ctx context.Context) ([]domain.Song, error)
 	return songsRes, nil
 }
 
-func (db *Database) Random20IndieSongs(ctx context.Context) ([]domain.Song, error) {
+func (db *Database) RandomIndieSongs(ctx context.Context, limit int) ([]domain.Song, error) {
+	limit = int(float64(limit) * 0.8)
+
 	pipeline := mongo.Pipeline{
 		{{"$match", bson.D{{"style", "indie"}, {"isActive", true}}}},
-		{{"$sample", bson.D{{"size", 20}}}},
+		{{"$sample", bson.D{{"size", limit}}}},
 	}
 
 	cursor, err := db.PostCol.Aggregate(ctx, pipeline)
